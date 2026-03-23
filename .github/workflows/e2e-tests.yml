@@ -1,0 +1,76 @@
+name: E2E Automation Tests
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, firefox]
+        # shard: [1, 2]   # 👈 divide tests
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build Docker image
+        run: docker build -t qa-framework .
+      
+      - name: Clean reports
+        run: rm -rf reports/${{ matrix.browser }}
+
+      - name: Run tests
+        run: |
+          docker run \
+            -e NODE_ENV=dev \
+            -e BROWSER=${{ matrix.browser }} \
+            -v ${{ github.workspace }}/reports/${{ matrix.browser }}:/app/reports \
+            qa-framework
+
+      - name: Upload Allure results
+        uses: actions/upload-artifact@v4
+        with:
+          name: allure-results-${{ matrix.browser }}
+          path: reports/${{ matrix.browser }}/allure-results
+  report:
+    needs: test
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write   # clave para GitHub Pages
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+      
+      - name: Install Allure
+        run: npm install -g allure-commandline --save-dev
+
+      - name: Clean reports
+        run: rm -rf reports/allure-results reports/allure-report
+
+      - name: Merge results
+        run: |
+          mkdir -p reports/allure-results
+          find artifacts -type f \( -name "*.json" -o -name "*.xml" \) -exec cp {} reports/allure-results \;
+          ls -R reports/allure-results
+
+      - name: Generate report
+        run: npx allure generate reports/allure-results --clean -o reports/allure-report
+
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: reports/allure-report
+          destination_dir: reports/${{ github.run_number }}
