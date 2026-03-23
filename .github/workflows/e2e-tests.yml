@@ -72,7 +72,7 @@ jobs:
 
           echo "📂 Copying Allure results..."
 
-          find artifacts -type d -name "allure-results" | while read dir; do
+          for dir in artifacts/*; do
             echo "Copying from $dir"
             cp -r $dir/* reports/allure-results/ || true
           done
