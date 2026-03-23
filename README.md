@@ -1,4 +1,4 @@
-# QA Automation Framework
+# Playwright Cucumber Framework
 
 ## 🚀 Stack
 - Playwright
@@ -8,9 +8,13 @@
 - Docker
 
 ## ▶️ Run
-npm install
-npm run test
+- npm install
+- npm run test
 
 ## 📊 Report
-npm run report
-npm run report:open
+- npm run report
+- npm run report:open
+
+## 🚀 Test Automation Status
+
+![E2E Tests](https://github.com/Ral008/playwright-cucumber-framework/actions/workflows/e2e-tests.yml/badge.svg)

@@ -22,21 +22,25 @@ jobs:
         run: docker build -t playwright-cucumber-framework:v1 .
       
       - name: Clean reports
-        run: rm -rf reports/${{ matrix.browser }}
+        run: |
+          rm -rf reports/${{ matrix.browser }} || true
+          mkdir -p reports/${{ matrix.browser }}
 
       - name: Run tests
         run: |
-          docker run \
+          docker run --rm \
+            --name test-${{ matrix.browser }} \
             -e NODE_ENV=dev \
             -e BROWSER=${{ matrix.browser }} \
-            -v ${{ github.workspace }}/reports/${{ matrix.browser }}:/app/reports \
-            playwright-cucumber-framework:v1
+            -v ${{ github.workspace }}/reports/${{ matrix.browser }}:/app/reports:rw \
+            playwright-cucumber-framework:v1 || exit 1
 
       - name: Upload Allure results
         uses: actions/upload-artifact@v4
         with:
           name: allure-results-${{ matrix.browser }}
           path: reports/${{ matrix.browser }}/allure-results
+          compression-level: 9
   report:
     needs: test
     runs-on: ubuntu-latest
@@ -62,23 +66,97 @@ jobs:
       - name: Prepare results
         run: |
           mkdir -p reports/allure-results
-          find artifacts -type f \( -name "*.json" -o -name "*.xml" \) -exec cp {} reports/allure-results \;
+          find artifacts -type f -path "*/allure-results/*" -name "*.json" -exec cp {} reports/allure-results \;
           ls -R reports/allure-results
+
+      - name: Get previous history
+        run: |
+          git clone --depth=1 --branch gh-pages https://github.com/${{ github.repository }} public || mkdir public
+
+          if [ -d "public/latest/history" ]; then
+            mkdir -p reports/allure-results/history
+            cp -r public/latest/history/* reports/allure-results/history/
+          fi
 
       - name: Generate report
         run: npx allure generate reports/allure-results --clean -o reports/allure-report
 
-      # HISTÓRICO
-      - name: Deploy to GitHub Pages history
-        uses: peaceiris/actions-gh-pages@v4
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: reports/allure-report
-          destination_dir: reports/${{ github.run_number }}
+      - name: Prepare final gh-pages structure
+        run: |
+          # latest
+          rm -rf public/latest
+          mkdir -p public/latest
+          cp -r reports/allure-report/* public/latest/
 
-      - name: Deploy to GitHub Pages latest
+          # history
+          mkdir -p public/reports/${{ github.run_number }}
+          cp -r reports/allure-report/* public/reports/${{ github.run_number }}/
+
+      - name: Generate dashboard
+        run: |
+          mkdir -p dashboard
+          mkdir -p public/reports
+
+          echo "<html><body>" > dashboard/index.html
+
+          echo "<h1>🚀 QA Dashboard</h1>" >> dashboard/index.html
+          echo "<p>Última ejecución: ${{ github.run_number }}</p>" >> dashboard/index.html
+          echo "<p>Commit: ${{ github.sha }}</p>" >> dashboard/index.html
+          echo "<p>Fecha: $(date)</p>" >> dashboard/index.html
+
+          echo "<h2>📊 Historial</h2><ul>" >> dashboard/index.html
+
+          for dir in $(ls public/reports 2>/dev/null | sort -nr || true); do
+            echo "<li><a href=\"reports/$dir/\">Run $dir</a></li>" >> dashboard/index.html
+          done
+
+          echo "</ul>" >> dashboard/index.html
+
+          echo "<h2>🔗 Accesos rápidos</h2>" >> dashboard/index.html
+          echo "<a href=\"latest/\">👉 Último reporte</a>" >> dashboard/index.html
+
+          echo "</body></html>" >> dashboard/index.html
+
+          # copiar al public
+          cp dashboard/index.html public/index.html
+
+      - name: Validate report
+        run: |
+          if [ ! -s reports/allure-report/index.html ]; then
+            echo "❌ Allure report not generated"
+            exit 1
+          fi
+
+      # HISTÓRICO
+      #- name: Deploy to GitHub Pages history
+      #  uses: peaceiris/actions-gh-pages@v4
+      #  with:
+      #    github_token: ${{ secrets.GITHUB_TOKEN }}
+      #    publish_dir: reports/allure-report
+      #    destination_dir: reports/${{ github.run_number }}
+
+      # LATEST
+      #- name: Deploy to GitHub Pages latest
+      #  uses: peaceiris/actions-gh-pages@v4
+      #  with:
+      #    github_token: ${{ secrets.GITHUB_TOKEN }}
+      #    publish_dir: reports/allure-report
+      #    destination_dir: latest
+
+      #- name: Deploy dashboard
+      #  uses: peaceiris/actions-gh-pages@v4
+      #  with:
+      #    github_token: ${{ secrets.GITHUB_TOKEN }}
+      #    publish_dir: dashboard
+      #    destination_dir: .
+      
+      - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: reports/allure-report
-          destination_dir: latest
+          publish_dir: public
+
+      - name: Publish report URL
+        run: |
+          echo "## 📊 Allure Report" >> $GITHUB_STEP_SUMMARY
+          echo "👉 https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/latest/" >> $GITHUB_STEP_SUMMARY
