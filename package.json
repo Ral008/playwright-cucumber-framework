@@ -4,7 +4,6 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "pretest": "npx playwright install chromium",
     "test": "cucumber-js --parallel 0",
     "test:chrome": "NODE_ENV=dev BROWSER=chromium npm run test",
     "test:dev": "NODE_ENV=dev cucumber-js",
