@@ -1,0 +1,31 @@
+{
+  "name": "playwright-cucumber-framework",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "pretest": "npx playwright install chromium",
+    "test": "cucumber-js --parallel 0",
+    "test:chrome": "NODE_ENV=dev BROWSER=chromium npm run test",
+    "test:dev": "NODE_ENV=dev cucumber-js",
+    "test:parallel": "cucumber-js --parallel 4",
+    "report": "allure generate reports/allure-results --clean -o reports/allure-report",
+    "report:open": "allure open reports/allure-report"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "dotenv": "^17.2.3"
+  },
+  "devDependencies": {
+    "@cucumber/cucumber": "^12.7.0",
+    "@playwright/test": "^1.58.2",
+    "@types/node": "^25.3.5",
+    "allure-commandline": "^2.38.0",
+    "allure-cucumberjs": "^3.6.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.3"
+  }
+}

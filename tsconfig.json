@@ -1,0 +1,12 @@
+{
+  "compilerOptions": {
+    "target": "ES2019",          // 🔥 CLAVE
+    "module": "commonjs",        // 🔥 CLAVE
+    "moduleResolution": "node",
+    "esModuleInterop": true,
+    "strict": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "types": ["node"]
+  }
+}
