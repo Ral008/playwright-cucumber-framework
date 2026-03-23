@@ -66,7 +66,18 @@ jobs:
       - name: Prepare results
         run: |
           mkdir -p reports/allure-results
-          find artifacts -type f -path "*/allure-results/*" -name "*.json" -exec cp {} reports/allure-results \;
+
+          echo "📦 Listing artifacts structure..."
+          ls -R artifacts
+
+          echo "📂 Copying Allure results..."
+
+          find artifacts -type d -name "allure-results" | while read dir; do
+            echo "Copying from $dir"
+            cp -r $dir/* reports/allure-results/ || true
+          done
+
+          echo "✅ Final results:"
           ls -R reports/allure-results
 
       - name: Get previous history
